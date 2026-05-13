@@ -54,8 +54,10 @@ flowchart LR
     I --> S[StdoutEventSink<br/>in-tree]
     I --> V[Vendor sinks<br/>separate packages]
 
-    O --> D[Defender / Sentinel /<br/>Splunk / Datadog /<br/>Honeycomb / Dynatrace]
-    V --> X[Direct vendor connectors]
+    O --> C[OpenTelemetry Collector<br/>or direct OTLP endpoint]
+    C --> D[Datadog / Honeycomb /<br/>Dynatrace / Splunk<br/>native OTLP]
+    C --> M[Sentinel / Defender /<br/>Azure Monitor / CloudWatch<br/>via Collector exporter]
+    V --> X[Direct vendor connectors<br/>e.g. Falco, Tetragon, custom]
 
     P[Policy<br/>requires_sink: siem] -. enforces .-> I
 ```
@@ -132,7 +134,14 @@ belongs in.
 
 - **Interface and envelope:** `agent-os` (kernel-level concern).
 - **Reference sinks:** `agent-os` for `StdoutEventSink`; `agent-sre` for
-  `OtlpEventSink` (keeps OTel optional in core).
+  `OtlpEventSink` (keeps OTel optional in core). `OtlpEventSink` emits
+  OpenTelemetry Protocol over gRPC or HTTP. Backends with native OTLP ingest
+  (Datadog, Honeycomb, Dynatrace, Splunk Observability) receive events
+  directly; backends without native OTLP (Sentinel, Defender, Azure Monitor,
+  CloudWatch, Elastic) are reached via the OpenTelemetry Collector with the
+  appropriate vendor exporter. Vendor fan-out is the Collector's job, not
+  AGT's. Sensors that produce rather than consume events (Falco, Tetragon)
+  sit alongside the OTLP path as separate vendor sinks.
 - **Vendor sinks:** separate optional packages, e.g. `agt-sink-defender`,
   `agt-sink-sentinel`.
 - **Hypervisor integration:** `agent-hypervisor` adapts its existing
