@@ -220,15 +220,32 @@ type GovernanceEventSink interface {
 }
 ```
 
-## Open questions
+## Decisions
 
-1. Delivery semantics: at-least-once vs at-most-once, per-sink configurable?
-2. Multi-sink fanout: parallel `gather` vs chain-of-responsibility?
-3. Signing key management: bring-your-own-KMS vs AGT-managed key rotation?
-4. How does the existing audit log subsystem relate — does it become a sink,
-   or stay as a parallel store?
-5. Schema versioning and forward-compat strategy.
-6. Backpressure: bounded queue + drop policy vs blocking the kernel.
+- **Delivery semantics:** at-least-once. Sinks must be idempotent on
+  `(agent_id, sequence)`. The emitter retries with bounded exponential backoff;
+  on permanent failure the event is written to a local spool and replayed on
+  reconnect.
+- **Multi-sink fanout:** parallel. The emitter calls every attached sink
+  concurrently. One sink failing does not block the others. Per-sink failures
+  surface through `health()` and are evaluated by policy.
+- **Signing key management:** bring-your-own. The signing key is supplied via
+  configuration and may be backed by any KMS (Azure Key Vault, AWS KMS, HSM,
+  file). AGT does not generate or rotate keys itself. Key identifier is
+  carried in the envelope so verifiers can resolve the correct key.
+- **Audit log subsystem:** the existing audit log becomes a sink
+  (`AuditChainSink`) that implements the same interface and writes
+  `audit.chain` events to the hash-chained store. The audit log stops being a
+  parallel pipeline and becomes one consumer of the unified event stream.
+- **Schema versioning:** the CloudEvents `dataschema` attribute carries a
+  semver URI (e.g. `https://agt.dev/schemas/governance-event/1.0`). Sinks
+  must accept any minor version they recognise the major of and ignore
+  unknown extension attributes. Breaking changes bump the major.
+- **Backpressure:** bounded in-memory queue per sink (default 10k events).
+  When full, behaviour is policy-controlled per sink class — `audit` and
+  `siem` block the emitter (fail-closed semantics); `observability` and
+  `debug` drop oldest with a counter event. The drop counter is itself
+  emitted as a `policy.breach` so a SIEM sees it.
 
 ## Next steps
 
