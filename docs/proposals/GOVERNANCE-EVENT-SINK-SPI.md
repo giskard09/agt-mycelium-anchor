@@ -11,7 +11,7 @@ Licensed under the MIT License.
 
 ## Summary
 
-Generalise the existing `SpanSink` Protocol pattern from `agent-hypervisor` into
+Generalize the existing `SpanSink` Protocol pattern from `agent-hypervisor` into
 a first-class **`GovernanceEventSink`** SPI in `agent-os`. AGT becomes a
 structured, signed event producer; enforcement and observability backends
 (Defender, Sentinel, Splunk, Datadog, Falco, Tetragon) plug in as sinks.
@@ -112,7 +112,7 @@ governance:
 
 If no sink of the required class is attached and healthy at startup, the
 kernel refuses to start. If a required sink becomes unhealthy at runtime,
-behaviour is policy-controlled (degrade, fail closed, alert only).
+behavior is policy-controlled (degrade, fail closed, alert only).
 
 ## Bypass-resistance
 
@@ -239,10 +239,10 @@ type GovernanceEventSink interface {
   parallel pipeline and becomes one consumer of the unified event stream.
 - **Schema versioning:** the CloudEvents `dataschema` attribute carries a
   semver URI (e.g. `https://agt.dev/schemas/governance-event/1.0`). Sinks
-  must accept any minor version they recognise the major of and ignore
+  must accept any minor version they recognize the major of and ignore
   unknown extension attributes. Breaking changes bump the major.
 - **Backpressure:** bounded in-memory queue per sink (default 10k events).
-  When full, behaviour is policy-controlled per sink class — `audit` and
+  When full, behavior is policy-controlled per sink class — `audit` and
   `siem` block the emitter (fail-closed semantics); `observability` and
   `debug` drop oldest with a counter event. The drop counter is itself
   emitted as a `policy.breach` so a SIEM sees it.
@@ -250,7 +250,7 @@ type GovernanceEventSink interface {
 ## Next steps
 
 1. Directional review of this proposal by the AGT team.
-2. Resolve open questions and finalise schema.
+2. Resolve open questions and finalize schema.
 3. Break implementation into tickets, using #1987 as the reference branch
    (after addressing review feedback): Python Protocol + schema → reference
    sinks → policy integration → SDK ports → docs and examples.
